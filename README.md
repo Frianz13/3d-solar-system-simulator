@@ -33,8 +33,8 @@ I have huge interests in space stuff so i made this. Actually, i already publish
 
 ## Assets & Credits
 
-- **Planet & Sun textures** —
-  [Solar System Scope](https://www.solarsystemscope.com/textures/) — textures © Solar System Scope, licensed under CC BY 4.0
+- **Planet & Sun textures** : 
+  [Solar System Scope](https://www.solarsystemscope.com/textures/) , textures © Solar System Scope, licensed under CC BY 4.0
  
 ---
 
@@ -42,17 +42,17 @@ I have huge interests in space stuff so i made this. Actually, i already publish
 - **Vibe-coded using :**
   - Gemini 3
   - Claude Opus 4.8
-    
-- **Developed by :**
-  Frianz 13
-  
+ 
 - **Tools used :**
   - Visual Studio Code
   - Claude Desktop App
-    
+   
+- **Developed by :**
+  Frianz 13
 
 ---
-
+### Try It [Here](https://frianz13.github.io/3d-solar-system-simulator/)
+---
 ## License
 
 Released under the **MIT License** — free to use, modify, and share, as long as the original credit is kept.
