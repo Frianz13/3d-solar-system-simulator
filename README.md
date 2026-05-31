@@ -1,10 +1,10 @@
 # 3D Solar System Simulator
-~~~
+
 
 This is an interactive, bilingual 3D Solar System you can explore! Click any planet to fly to it and learn the facts.
 It's the first time publishing my very first PWA (Progressive Web App), and I'm so excited! 
 I have huge interests in space stuff so i made this. Actually, i already published the early vibe-coded version of this in my X post before (https://x.com/Frianz13/status/2010036327790850204?s=20). Originally made this using Yupp AI, and now I just updated it again with new features. 
----
+
 
 ## Features
 
