@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" fill="#000010" rx="18"/>
+  <!-- Sun -->
+  <circle cx="50" cy="50" r="10" fill="#FDB813"/>
+  <circle cx="50" cy="50" r="13.5" fill="none" stroke="#FDB81330" stroke-width="3"/>
+  <!-- Orbit rings -->
+  <circle cx="50" cy="50" r="22" fill="none" stroke="#ffffff18" stroke-width="0.7"/>
+  <circle cx="50" cy="50" r="33" fill="none" stroke="#ffffff14" stroke-width="0.7"/>
+  <circle cx="50" cy="50" r="44" fill="none" stroke="#ffffff10" stroke-width="0.7"/>
+  <!-- Earth -->
+  <circle cx="72" cy="50" r="3" fill="#22A6B3"/>
+  <!-- Mars -->
+  <circle cx="50" cy="17" r="2.5" fill="#DD4124"/>
+  <!-- Saturn + ring -->
+  <circle cx="16" cy="50" r="4.5" fill="#EAD6B8"/>
+  <ellipse cx="16" cy="50" rx="9" ry="2.2" fill="none" stroke="#EAD6B870" stroke-width="1.4"/>
+  <!-- Jupiter -->
+  <circle cx="33" cy="81" r="5" fill="#D9A066"/>
+</svg>

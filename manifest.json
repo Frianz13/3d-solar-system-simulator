@@ -1,0 +1,22 @@
+{
+    "name": "3D Solar System Simulator",
+    "short_name": "Solar System",
+    "description": "Interactive 3D Solar System Simulator",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#000010",
+    "theme_color": "#00d2ff",
+    "orientation": "any",
+    "categories": [
+        "education",
+        "science"
+    ],
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}

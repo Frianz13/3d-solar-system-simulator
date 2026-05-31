@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000010">
+    <meta name="description" content="Interactive 3D Solar System — explore all planets with real textures">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Solar System">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <title>3D Solar System Simulator</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        :root {
+            --accent: #00d2ff;
+            --glass: rgba(8, 10, 22, 0.88);
+            --border: rgba(255, 255, 255, 0.10);
+            --text: #ffffff;
+            --text-dim: #9aaabb;
+            --panel-w: 340px;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            color: var(--text);
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
+
+
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+
+        /* Loader */
+        #loader {
+            position: fixed;
+            inset: 0;
+            background: #000010;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            transition: opacity 0.6s ease;
+        }
+
+        #loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loader-ring {
+            width: 52px;
+            height: 52px;
+            border: 3px solid rgba(0, 210, 255, 0.15);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        #loader-title {
+            font-size: 1.3rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #loader-progress {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* UI */
+        #ui-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* Header */
+        #header {
+            position: absolute;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            transition: opacity 0.4s ease;
+            white-space: nowrap;
+        }
+
+        #header h1 {
+            font-size: 1.25rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #ffffff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #header p {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+            background: rgba(0, 0, 0, 0.45);
+            padding: 3px 10px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        /* Planet label */
+        .planet-label {
+            position: fixed;
+            pointer-events: none;
+            z-index: 5;
+            font-size: 0.68rem;
+            color: rgba(255, 255, 255, 0.65);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+            transform: translate(-50%, -100%);
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+
+
+        /* Speed control */
+        #speed-control {
+            position: absolute;
+            bottom: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 6px 14px;
+        }
+
+        #speed-control button {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 2px 4px;
+            line-height: 1;
+            transition: color 0.2s;
+            border-radius: 4px;
+        }
+
+        #speed-control button:hover {
+            color: var(--accent);
+        }
+
+        #speed-label {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            min-width: 28px;
+            text-align: center;
+        }
+
+        #controls-hint {
+            position: absolute;
+            bottom: 22px;
+            left: 18px;
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.28);
+            letter-spacing: 0.5px;
+            pointer-events: none;
+        }
+
+        #corner-note {
+            position: absolute;
+            bottom: 4px;
+            right: 16px;
+            font-size: 0.58rem;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 0.5px;
+            pointer-events: none;
+            z-index: 11;
+        }
+
+        /* Language toggle */
+        #lang-toggle {
+            position: absolute;
+            bottom: 22px;
+            left: 18px;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 4px;
+        }
+
+        #lang-toggle button {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.6px;
+            padding: 5px 13px;
+            border-radius: 24px;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+
+        #lang-toggle button.active {
+            background: var(--accent);
+            color: #00141c;
+        }
+
+        #lang-toggle button:not(.active):hover {
+            color: var(--text);
+        }
+
+        /* Info panel */
+        #info-panel {
+            position: absolute;
+            background: var(--glass);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            pointer-events: auto;
+            overflow-y: auto;
+            /* Mobile: bottom sheet */
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 56vh;
+            border-top: 1px solid var(--border);
+            border-radius: 20px 20px 0 0;
+            padding: 8px 20px 36px;
+            transform: translateY(110%);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        #info-panel.active {
+            transform: translateY(0);
+        }
+
+        /* Drag handle (mobile) */
+        .drag-handle {
+            width: 36px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.22);
+            border-radius: 2px;
+            margin: 10px auto 14px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        #planet-name {
+            font-size: 1.75rem;
+            font-weight: 700;
+            line-height: 1;
+            color: var(--accent);
+        }
+
+        #planet-type {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 5px;
+            letter-spacing: 0.4px;
+        }
+
+        #close-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+
+        #close-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            color: #fff;
+        }
+
+        #planet-desc {
+            font-size: 0.88rem;
+            line-height: 1.65;
+            color: #c8d8e8;
+            margin: 10px 0 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            padding: 9px 11px;
+            border-radius: 10px;
+        }
+
+        .stat-label {
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+
+        /* Desktop Mode */
+        @media (min-width: 768px) {
+            #header {
+                left: 22px;
+                transform: none;
+                text-align: left;
+            }
+
+            #info-panel {
+                /* */
+                top: 0;
+                bottom: 0;
+                left: auto;
+                right: 0;
+                width: var(--panel-w);
+                max-height: 100vh;
+                border-radius: 0;
+                border-top: none;
+                border-left: 1px solid var(--border);
+                padding: 28px 22px 32px;
+                /* */
+                transform: translateX(100%);
+                transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            }
+
+            #info-panel.active {
+                transform: translateX(0);
+                /* */
+            }
+
+            .drag-handle {
+                display: none;
+            }
+
+            #planet-desc {
+                font-size: 0.9rem;
+            }
+
+            #controls-hint {
+                display: block;
+                bottom: 60px;
+            }
+
+            #speed-control {
+                left: auto;
+                transform: none;
+                right: 18px;
+                bottom: 22px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            #controls-hint {
+                display: none;
+            }
+        }
+
+        /* */
+        .stat-full {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            padding: 9px 11px;
+            border-radius: 10px;
+            margin-top: 8px;
+        }
+
+        .info-section {
+            margin-top: 18px;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+            margin-bottom: 9px;
+            font-weight: 600;
+        }
+
+        .missions-text {
+            font-size: 0.82rem;
+            color: #c8d8e8;
+            line-height: 1.6;
+        }
+
+        .facts-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .facts-list li {
+            font-size: 0.82rem;
+            color: #c8d8e8;
+            line-height: 1.6;
+            padding-left: 18px;
+            position: relative;
+        }
+
+        .facts-list li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-size: 0.75rem;
+            top: 2px;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+</head>
+
+<body>
+
+    <!-- LOADER -->
+    <div id="loader">
+        <div class="loader-ring"></div>
+        <div id="loader-title">Solar System</div>
+        <div id="loader-progress">Loading textures... 0%</div>
+    </div>
+
+    <!-- UI LAYER -->
+    <div id="ui-layer">
+
+        <div id="header">
+            <h1>3D Solar System Simulator</h1>
+            <p id="hint-text">Tap a planet to explore</p>
+        </div>
+
+        <div id="controls-hint">Drag to rotate &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Click a planet</div>
+
+        <div id="lang-toggle">
+            <button id="lang-en" data-lang="en">EN</button>
+            <button id="lang-id" data-lang="id">ID</button>
+        </div>
+
+        <div id="speed-control">
+            <button id="btn-slower" title="Slow down">⏪</button>
+            <span id="speed-label">1×</span>
+            <button id="btn-faster" title="Speed up">⏩</button>
+            <button id="btn-pause" title="Pause / Play">⏸</button>
+        </div>
+        <div id="corner-note">Developed by Frianz 13</div>
+        <div id="info-panel">
+            <div class="drag-handle"></div>
+            <div class="panel-header">
+                <div>
+                    <div id="planet-name">—</div>
+                    <div id="planet-type">—</div>
+                </div>
+                <button id="close-btn">✕</button>
+            </div>
+            <p id="planet-desc"></p>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label" id="lbl-dist">Distance from Sun</div>
+                    <div class="stat-value" id="stat-dist">—</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label" id="lbl-size">Diameter</div>
+                    <div class="stat-value" id="stat-size">—</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label" id="lbl-orbit">Orbital Period</div>
+                    <div class="stat-value" id="stat-orbit">—</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label" id="lbl-temp">Avg Temperature</div>
+                    <div class="stat-value" id="stat-temp">—</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label" id="lbl-moons">Natural Satellites</div>
+                    <div class="stat-value" id="stat-moons">—</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label" id="lbl-day">Day Length</div>
+                    <div class="stat-value" id="stat-day">—</div>
+                </div>
+            </div>
+            <div class="stat-item stat-full">
+                <div class="stat-label" id="lbl-gravity">Surface Gravity</div>
+                <div class="stat-value" id="stat-gravity">—</div>
+            </div>
+            <div class="info-section">
+                <div class="section-title" id="sec-missions">🚀 Notable Missions</div>
+                <div id="stat-missions" class="missions-text">—</div>
+            </div>
+            <div class="info-section">
+                <div class="section-title" id="sec-facts">💡 Fun Facts</div>
+                <ul id="stat-facts" class="facts-list"></ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Canvas -->
+    <div id="canvas-container"></div>
+
+    <script>
+        /* */
+
+
+        const PLANET_DATA = [
+            {
+                key: "Sun", texture: "Sun.jpg", size: 4, distance: 0, speed: 0,
+                color: "#FDB813", isSun: true,
+                en: {
+                    name: "Sun",
+                    type: "G-type Main Sequence Star",
+                    realDist: "Center of Solar System", realSize: "1,392,700 km",
+                    orbitTime: "N/A", temp: "5,500°C (surface)",
+                    moons: "N/A", dayLength: "~25 Earth days (equator)",
+                    gravity: "28× Earth gravity",
+                    missions: "Parker Solar Probe, SOHO, Ulysses, STEREO",
+                    desc: "The Sun is the star at the center of our Solar System, a nearly perfect ball of hot plasma. Nuclear fusion in its core converts hydrogen into helium, releasing the light and energy that sustains all life on Earth.",
+                    funFacts: [
+                        "The Sun contains 99.86% of the total mass of the entire Solar System.",
+                        "Light from the Sun takes 8 minutes and 20 seconds to reach Earth.",
+                        "About 1.3 million Earths could fit inside the Sun.",
+                        "The Sun's core reaches 15 million°C, but its outer corona is even hotter at 1–3 million°C!",
+                        "The Sun loses about 4 million tonnes of mass every second through nuclear fusion."
+                    ]
+                },
+                id: {
+                    name: "Matahari",
+                    type: "Bintang Deret Utama Tipe-G",
+                    realDist: "Pusat Tata Surya", realSize: "1.392.700 km",
+                    orbitTime: "T/A", temp: "5.500°C (permukaan)",
+                    moons: "T/A", dayLength: "~25 hari Bumi",
+                    gravity: "28× gravitasi Bumi",
+                    missions: "Parker Solar Probe, SOHO, Ulysses, STEREO",
+                    desc: "Matahari adalah bintang di pusat Tata Surya kita, bola plasma panas yang nyaris sempurna. Reaksi fusi nuklir di intinya mengubah hidrogen menjadi helium, melepaskan cahaya dan energi yang menopang seluruh kehidupan di Bumi.",
+                    funFacts: [
+                        "Matahari tuh literally nyimpen 99,86% dari total massa seluruh Tata Surya.",
+                        "Cahaya Matahari perlu 8 menit 20 detik buat nyampe ke Bumi.",
+                        "Saking gedenya, kalo ada yang mau masukin sekitar 1,3 juta Bumi ke dalam Matahari tuh muat jir.",
+                        "Suhu inti Matahari mencapai 15 juta°C, dan korona (bukan virus yah, tapi lapisan matahari) luarnya sekitar 1–3 juta°C! Neraka inimah!",
+                        "Tiap detik, massa Matahari berkurang sekitar 4 juta ton lewat fusi nuklir."
+                    ]
+                }
+            },
+            {
+                key: "Mercury", texture: "Mercury.jpg", size: 0.8, distance: 8, speed: 0.04,
+                color: "#B0B0B0",
+                en: {
+                    name: "Mercury",
+                    type: "Terrestrial Planet",
+                    realDist: "57.9 million km", realSize: "4,880 km",
+                    orbitTime: "88 Earth days", temp: "167°C",
+                    moons: "0", dayLength: "176 Earth days",
+                    gravity: "0.38× Earth gravity",
+                    missions: "Mariner 10, MESSENGER, BepiColombo (en route)",
+                    desc: "Mercury is the smallest planet and closest to the Sun. Its thin atmosphere cannot trap heat, creating extreme temperature swings, scorching hot by day and freezing cold by night.",
+                    funFacts: [
+                        "A year on Mercury (88 days) is shorter than its own day (176 days)!",
+                        "Despite being closest to the Sun, Mercury is NOT the hottest planet!",
+                        "Mercury has no moons and no rings at all.",
+                        "Surface temperatures swing from −180°C at night to 430°C during the day.",
+                        "Mercury is actually shrinking, its iron core is slowly cooling and contracting."
+                    ]
+                },
+                id: {
+                    name: "Merkurius",
+                    type: "Planet Terestrial",
+                    realDist: "57,9 juta km", realSize: "4.880 km",
+                    orbitTime: "88 hari Bumi", temp: "167°C",
+                    moons: "0", dayLength: "176 hari Bumi",
+                    gravity: "0,38× gravitasi Bumi",
+                    missions: "Mariner 10, MESSENGER, BepiColombo (lagi otewe)",
+                    desc: "Merkurius tuh planet yang paling kecil, paling deket sama Matahari. Atmosfernya tipis banget pokoknya gak bakal bisa nahan panas, dan itu bikin perubahan suhu ekstrim disana: siangnya kayak neraka, malamnya bagaikan kutub.",
+                    funFacts: [
+                        "Satu tahun di Merkurius (88 hari) lebih cepet daripada satu harinya sendiri (176 hari). Aneh kan?",
+                        "Kalian pasti ngira Merkurius planet terpanas ya? Sayang sekali, bukan. Jangan mentang-mentang deket sama matahari bisa jadi planet terpanas wkwk.",
+                        "Merkurius gak punya satelit alami maupun cincin sama sekali. ",
+                        "Suhu permukaannya udah kayak moodswing njir, dari −180°C di malam hari sampe 430°C di siang hari. Makanya tadi kubilang bagaikan kutub dan neraka.",
+                        "Merkurius sebenernya makin lama makin mengecil, inti besinya lama-lama mendingin dan mengerut."
+                    ]
+                }
+            },
+            {
+                key: "Venus", texture: "Venus.jpg", size: 1.5, distance: 13, speed: 0.015,
+                color: "#E3BB76", retrograde: true,
+                en: {
+                    name: "Venus",
+                    type: "Terrestrial Planet",
+                    realDist: "108.2 million km", realSize: "12,104 km",
+                    orbitTime: "225 Earth days", temp: "464°C",
+                    moons: "0", dayLength: "243 Earth days",
+                    gravity: "0.91× Earth gravity",
+                    missions: "Venera program (USSR), Magellan, Venus Express, DAVINCI+",
+                    desc: "Venus is the hottest planet in the Solar System despite not being the closest to the Sun. Its thick CO₂ atmosphere creates a runaway greenhouse effect, making its surface hotter than Mercury's.",
+                    funFacts: [
+                        "Venus rotates backwards, so the Sun rises in the west and sets in the east!",
+                        "A day on Venus (243 days) is longer than its year (225 days)!",
+                        "Venus is the brightest natural object in the night sky after the Moon.",
+                        "Atmospheric pressure on Venus is 90× that of Earth. That's enough to crush a submarine.",
+                        "Venus and Earth are almost the same size, sometimes called 'twin planets'."
+                    ]
+                },
+                id: {
+                    name: "Venus",
+                    type: "Planet Terestrial",
+                    realDist: "108,2 juta km", realSize: "12.104 km",
+                    orbitTime: "225 hari Bumi", temp: "464°C",
+                    moons: "0", dayLength: "243 hari Bumi",
+                    gravity: "0,91× gravitasi Bumi",
+                    missions: "Program Venera (Uni Soviet), Magellan, Venus Express, DAVINCI+",
+                    desc: "Planet Venus, nah ini barulah planet terpanas di Tata Surya, meski bukan yang paling deket sama Matahari. Atmosfer CO₂-nya tebel banget bikin efek rumah kaca brutal, makanya permukaan dia lebih panas daripada Merkurius.",
+                    funFacts: [
+                        "Rotasi Venus tuh kebalik sendiri, jadinya Matahari terbit di barat dan terbenam di timur. Literally 'kiamat' udah jadi hal yang normal disana, tiap hari malah.",
+                        "Sama kayak Merkurius, satu hari di Venus (243 hari) lebih panjang daripada satu tahunnya (225 hari).",
+                        "Venus itulah yang sering disebut 'Bintang Fajar' karena dia objek alami yang terangnya ngalahin bulan. Bisa dilihat langsung di langit malam atau subuh.",
+                        "Tekanan atmosfer di Venus tuh 90× tekanan Bumi. Ngery coeg, kapal selam bisa ancur inimah.",
+                        "Venus dan Bumi ukurannya hampir sama, kadang disebut 'planet kembar'."
+                    ]
+                }
+            },
+            {
+                key: "Earth", texture: "Earth.jpg", size: 1.65, distance: 18, speed: 0.01,
+                color: "#22A6B3",
+                en: {
+                    name: "Earth",
+                    type: "Terrestrial Planet",
+                    realDist: "149.6 million km", realSize: "12,742 km",
+                    orbitTime: "365.25 days", temp: "15°C",
+                    moons: "1 (The Moon)", dayLength: "24 hours",
+                    gravity: "1× (reference / 9.8 m/s²)",
+                    missions: "It's our home! Thousands of satellites & missions launched!",
+                    desc: "Earth is the only known planet to harbor life. Its unique position in the habitable zone, liquid water, protective magnetic field, and oxygen-rich atmosphere make it a cradle of life in the cosmos.",
+                    funFacts: [
+                        "Earth is the only planet not named after a mythological god or goddess.",
+                        "70% of Earth's surface is covered by water, yet 97% of that is salty ocean.",
+                        "Earth's magnetic field protects us from harmful solar winds and radiation.",
+                        "Earth is the densest planet in the Solar System.",
+                        "The Moon is slowly drifting away from Earth at about 3.8 cm per year."
+                    ]
+                },
+                id: {
+                    name: "Bumi",
+                    type: "Planet Terestrial",
+                    realDist: "149,6 juta km", realSize: "12.742 km",
+                    orbitTime: "365,25 hari", temp: "15°C",
+                    moons: "1 (Bulan)", dayLength: "24 jam",
+                    gravity: "1× (acuan / 9,8 m/s²)",
+                    missions: "Nah ini rumah kita! Ribuan satelit & misi diluncurkan dari sini!",
+                    desc: "Bumi, satu-satunya planet yang berisi kehidupan. Posisinya unik ada di zona layak huni, ada air yang cukup, ada medan magnet pelindung, dan atmosfer kaya oksigen yang bikin planet ini jadi punya kehidupan di alam semesta.",
+                    funFacts: [
+                        "Bumi tuh anti-mainstream! Dia satu-satunya planet yang gak dinamain pake nama dewa atau dewi mitologi.",
+                        "70% permukaan Bumi tertutup air, dan 97% airnya itu lautan asin.",
+                        "Medan magnet Bumi jadi tameng kita dari angin matahari dan radiasi berbahaya.",
+                        "Bumi adalah planet paling rame di Tata Surya. Pengap jir banyak orang sama binatang.",
+                        "Bulan diem-diem ngejauhin Bumi sekitar 3,8 cm per tahun. Kenapa tuh kira-kira? Lagi ngambek kah?"
+                    ]
+                }
+            },
+            {
+                key: "Mars", texture: "Mars.jpg", size: 1.2, distance: 24, speed: 0.008,
+                color: "#DD4124",
+                en: {
+                    name: "Mars",
+                    type: "Terrestrial Planet",
+                    realDist: "227.9 million km", realSize: "6,779 km",
+                    orbitTime: "687 Earth days", temp: "−63°C",
+                    moons: "2 (Phobos & Deimos)", dayLength: "24 hrs 37 min",
+                    gravity: "0.38× Earth gravity",
+                    missions: "Viking 1 & 2, Spirit, Opportunity, Curiosity, Perseverance, Ingenuity",
+                    desc: "Mars, the Red Planet, is home to the largest volcano (Olympus Mons) and the longest canyon (Valles Marineris) in the Solar System. Strong evidence suggests Mars once had liquid water flowing on its surface.",
+                    funFacts: [
+                        "Olympus Mons is the tallest volcano in the Solar System — nearly 3× the height of Mount Everest!",
+                        "Mars appears red because its surface is coated in iron oxide, basically rust!",
+                        "A Martian day (called a 'sol') is only 37 minutes longer than an Earth day.",
+                        "Ingenuity became the first aircraft to achieve powered, controlled flight on another planet in 2021!",
+                        "Valles Marineris is a canyon system so long it could stretch across the entire United States."
+                    ]
+                },
+                id: {
+                    name: "Mars",
+                    type: "Planet Terestrial",
+                    realDist: "227,9 juta km", realSize: "6.779 km",
+                    orbitTime: "687 hari Bumi", temp: "−63°C",
+                    moons: "2 (Phobos & Deimos)", dayLength: "24 jam 37 menit",
+                    gravity: "0,38× gravitasi Bumi",
+                    missions: "Viking 1 & 2, Spirit, Opportunity, Curiosity, Perseverance, Ingenuity",
+                    desc: "Mars, Planet Merah, itu rumahnya gunung berapi terbesar (Olympus Mons) dan ngarai terpanjang (Valles Marineris) di Tata Surya. Dulu pernah ada air ngalir di permukaan Mars. Ada buktinya kok.",
+                    funFacts: [
+                        "Olympus Mons adalah gunung berapi tertinggi di Tata Surya, hampir 3× tingginya Gunung Everest!",
+                        "Kenapa warnanya merah? karena permukaannya diselimuti oksida besi. Woilah, planet karatan inimah wkwk.",
+                        "Satu hari Mars (disebut 'sol') cuma 37 menit lebih lama daripada satu hari Bumi.",
+                        "Tau gak? Ingenuity menjadi pesawat pertama yang melakukan penerbangan bertenaga dan terkendali di planet lain di tahun 2021!",
+                        "Valles Marineris, sistem ngarai yang bener-bener panjang sampe bisa ngelewatin seluruh Amerika Serikat."
+                    ]
+                }
+            },
+            {
+                key: "Jupiter", texture: "Jupiter.jpg", size: 3.6, distance: 36, speed: 0.002,
+                color: "#D9A066",
+                en: {
+                    name: "Jupiter",
+                    type: "Gas Giant",
+                    realDist: "778.5 million km", realSize: "139,820 km",
+                    orbitTime: "11.8 Earth years", temp: "−108°C (cloud top)",
+                    moons: "95", dayLength: "9 hrs 56 min",
+                    gravity: "2.53× Earth gravity",
+                    missions: "Pioneer 10 & 11, Voyager 1 & 2, Galileo, Juno, Europa Clipper",
+                    desc: "Jupiter is the largest planet. It's so massive that all other planets combined are less than half its mass. Its Great Red Spot is a storm that has raged for over 350 years. It has at least 95 known moons.",
+                    funFacts: [
+                        "Jupiter has the shortest day of all planets. It's less than 10 hours!",
+                        "The Great Red Spot is a storm wider than Earth and has lasted over 350 years.",
+                        "Jupiter acts as a cosmic shield, pulling dangerous asteroids away from inner planets with its gravity.",
+                        "Ganymede, Jupiter's largest moon, is bigger than the planet Mercury.",
+                        "If Jupiter were about 80× more massive, it could have ignited into a second star!"
+                    ]
+                },
+                id: {
+                    name: "Jupiter",
+                    type: "Planet Gas Raksasa",
+                    realDist: "778,5 juta km", realSize: "139.820 km",
+                    orbitTime: "11,8 tahun Bumi", temp: "−108°C (puncak awan)",
+                    moons: "95", dayLength: "9 jam 56 menit",
+                    gravity: "2,53× gravitasi Bumi",
+                    missions: "Pioneer 10 & 11, Voyager 1 & 2, Galileo, Juno, Europa Clipper",
+                    desc: "Jupiter planet yang paling gede. Saking gedenya sampe gabungan semua planet lainnya pun masih kurang dari setengah massanya. Dia punya tompel Merah Raksasa gara-gara ada badai ngamuk selama lebih dari 350 tahun. Satelit alaminya banyak banget, ada sekitar 95.",
+                    funFacts: [
+                        "Satu hari di Jupiter itu durasinya paling cepet diantara yang lain. Kurang dari 10 jam!",
+                        "Tompel Merah Raksasa sebenernya badai yang lebih lebar daripada Bumi dan udah ada disitu selama lebih dari 350 tahun.",
+                        "Jupiter ini baik banget loh. Dia rela pake gravitasinya buat narik asteroid berbahaya biar gak macem-macem sama planet dalam. Respect!",
+                        "Ganymede itu bulannya Jupiter yang palling gede, lebih gede daripada planet Merkurius.",
+                        "Kalo Jupiter sekitar 80× lebih masif, bisa tuh nyala jadi bintang kedua!"
+                    ]
+                }
+            },
+            {
+                key: "Saturn", texture: "Saturn.jpg", size: 3.1, distance: 50, speed: 0.0015,
+                color: "#EAD6B8", hasRings: true,
+                en: {
+                    name: "Saturn",
+                    type: "Gas Giant",
+                    realDist: "1.4 billion km", realSize: "116,460 km",
+                    orbitTime: "29 Earth years", temp: "−139°C (cloud top)",
+                    moons: "146", dayLength: "10 hrs 42 min",
+                    gravity: "1.07× Earth gravity",
+                    missions: "Pioneer 11, Voyager 1 & 2, Cassini-Huygens",
+                    desc: "Saturn is famous for its stunning ring system made of ice and rock. Despite being the second-largest planet, it is the least dense. It has 146 known moons, including Titan with its thick atmosphere.",
+                    funFacts: [
+                        "Saturn is the least dense planet, it would literally float on water!",
+                        "Saturn's rings span up to 282,000 km wide but are only 10–20 meters thick.",
+                        "Titan, Saturn's largest moon, has lakes of liquid methane but not water!",
+                        "Saturn has 146 known moons. This amount is the most of any planet in the Solar System.",
+                        "The Cassini spacecraft orbited Saturn for 13 years, revolutionizing our understanding of the planet."
+                    ]
+                },
+                id: {
+                    name: "Saturnus",
+                    type: "Planet Gas Raksasa",
+                    realDist: "1,4 miliar km", realSize: "116.460 km",
+                    orbitTime: "29 tahun Bumi", temp: "−139°C (puncak awan)",
+                    moons: "146", dayLength: "10 jam 42 menit",
+                    gravity: "1,07× gravitasi Bumi",
+                    missions: "Pioneer 11, Voyager 1 & 2, Cassini-Huygens",
+                    desc: "Kita kenal Saturnus karena punya cincin, heh- bukan cincin kawin! Itu cincin yang terbuat dari es dan batuan. Meskipun dia planet terbesar kedua, dia yang paling renggang. Satelit alaminya ternyata lebih banyak daripada Jupiter, ada 146 jir! Salah satunya Titan (bukan Titan dari AOT loh ya!) yang punya atmosfer tebal.",
+                    funFacts: [
+                        "Saturnus itu planet yang paling renggang, kalo diceburin ke air dia bisa ngapung loh!",
+                        "Cincin Saturnus membentang lebar banget sampe 282.000 km, tapi tebelnya cuma 10–20 meter.",
+                        "Titan, bulan Saturnus yang paling gede, ada danaunya tapi bukan air! Itu danau metana cair!",
+                        "Kirain mah Jupiter yang punya satelit alami terbanyak, ternyata Saturnus dong! Dia punya 146 satelit alami. Gila woy serakah amat!",
+                        "Wahana Cassini mengorbit Saturnus selama 13 tahun, merevolusi pemahaman kita soal planet ini."
+                    ]
+                }
+            },
+            {
+                key: "Uranus", texture: "Uranus.jpg", size: 2.3, distance: 63, speed: 0.001,
+                color: "#D1F2F8",
+                en: {
+                    name: "Uranus",
+                    type: "Ice Giant",
+                    realDist: "2.8 billion km", realSize: "50,724 km",
+                    orbitTime: "84 Earth years", temp: "−197°C",
+                    moons: "27", dayLength: "17 hrs 14 min",
+                    gravity: "0.89× Earth gravity",
+                    missions: "Voyager 2 only (1986) and no other spacecraft has visited!",
+                    desc: "Uranus rotates on its side with a 98° axial tilt, likely caused by an ancient collision. It holds the record for the coldest planetary atmosphere in the Solar System, and has faint rings discovered in 1977.",
+                    funFacts: [
+                        "Uranus rotates on its side. Its axial tilt is 98°, likely from a massive ancient collision!",
+                        "Uranus was the first planet discovered using a telescope, by William Herschel in 1781.",
+                        "The coldest temperature ever recorded in the Solar System was Uranus's atmosphere: −224°C!",
+                        "Uranus has 13 known rings, all extremely faint compared to Saturn's.",
+                        "Only one spacecraft has ever visited Uranus. That was Voyager 2, back in 1986."
+                    ]
+                },
+                id: {
+                    name: "Uranus",
+                    type: "Planet Es Raksasa",
+                    realDist: "2,8 miliar km", realSize: "50.724 km",
+                    orbitTime: "84 tahun Bumi", temp: "−197°C",
+                    moons: "27", dayLength: "17 jam 14 menit",
+                    gravity: "0,89× gravitasi Bumi",
+                    missions: "Cuma Voyager 2 (1986) dan belum ada wahana lain lagi yang pernah mampir!",
+                    desc: "Uranus berputar dengan kemiringan sumbu 98°, kemungkinan gara-gara tabrakan dahsyat. Dia tuh planet yang paling sigma- eh, maksudnya planet paling dingin di Tata Surya. Dia juga punya cincin tipis yang ditemukan pada tahun 1977.",
+                    funFacts: [
+                        "Uranus planet yang miring, kayak otakmu tuh, wkwkwk bercanda kok. Kemiringan sumbunya 98°, kabarnya sih gara-gara tabrakan jadinya begitu.",
+                        "William Herschel yang pertama kali nemuin planet ini pake teleskop pada tahun 1781.",
+                        "Suhu atmosfer Uranus nyentuh −224°C, itu suhu terdingin yang pernah tercatat di Tata Surya. Kalo buat nyimpen frozen food disini bisa awet sampai kapan ya?",
+                        "Uranus punya 13 cincin, banyak kan? Tapi semuanya tipis banget kalo dibandingin sama cincin Saturnus. Makanya gak kelihatan.",
+                        "Cuma satu wahana yang pernah mampir ke Uranus. Itu Voyager 2, tahun 1986."
+                    ]
+                }
+            },
+            {
+                key: "Neptune", texture: "Neptune.jpg", size: 2.2, distance: 78, speed: 0.0008,
+                color: "#4b70dd",
+                en: {
+                    name: "Neptune",
+                    type: "Ice Giant",
+                    realDist: "4.5 billion km", realSize: "49,244 km",
+                    orbitTime: "165 Earth years", temp: "−201°C",
+                    moons: "16", dayLength: "16 hrs 6 min",
+                    gravity: "1.14× Earth gravity",
+                    missions: "Voyager 2 only (1989) and no other spacecraft has visited!",
+                    desc: "Neptune is the farthest planet from the Sun, with the strongest winds in the Solar System reaching up to 2,100 km/h. One year on Neptune equals 165 Earth years. That means, if we were living on Neptune, our lifespan would only be around half a year there.",
+                    funFacts: [
+                        "Neptune has the strongest winds in the Solar System (up to 2,100 km/h)",
+                        "Neptune was predicted by mathematics before anyone ever saw it through a telescope.",
+                        "Sunlight takes 4 hours to reach Neptune, compared to just 8 minutes to reach Earth.",
+                        "Triton, Neptune's largest moon, orbits backwards and is slowly spiraling toward Neptune.",
+                        "Neptune completed its very first orbit since its discovery only in 2011 — 165 years later!"
+                    ]
+                },
+                id: {
+                    name: "Neptunus",
+                    type: "Planet Es Raksasa",
+                    realDist: "4,5 miliar km", realSize: "49.244 km",
+                    orbitTime: "165 tahun Bumi", temp: "−201°C",
+                    moons: "16", dayLength: "16 jam 6 menit",
+                    gravity: "1,14× gravitasi Bumi",
+                    missions: "Cuma Voyager 2 (1989) dan belum ada wahana lain lagi yang pernah mampir!",
+                    desc: "Neptunus, planet yang paling jauh dari Matahari. Disana ada angin terkencang di Tata Surya yang kecepatannya sampe 2.100 km/jam. Setahun disana sama aja satu setengah abad lebih kalo di Bumi. Berarti kalo kita tinggal di Neptunus, umur kita palingan cuma sampe setengah tahun disana.",
+                    funFacts: [
+                        "Mau ngerasain terbang ketiup angin gak? Tuh Neptunus punya angin paling kencang di Tata Surya (hingga 2.100 km/jam).",
+                        "Neptunus udah diprediksi lewat perhitungan matematika sebelum ada yang pernah ngeliat lewat teleskop. Kok tau sih?",
+                        "Cahaya matahari butuh 4 jam biar sampe ke Neptunus, dibandingin cuma 8 menit buat nyampe ke Bumi.",
+                        "Triton, bulan terbesar Neptunus, orbitnya kebalik dan lama-lama berputar deketin Neptunus.",
+                        "Orbit pertamanya selesai pas baru ditemukan pada 2011, jadinya nanti orbit keduanya 165 tahun kemudian. Aduh, keburu lumutan ini kalo kita tungguin!"
+                    ]
+                }
+            }
+        ];
+
+
+        const UI_TEXT = {
+            en: {
+                hint: "Tap a planet to explore",
+                controlsHint: "Drag to rotate &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Click a planet",
+                loading: "Loading textures...",
+                lblDist: "Distance from Sun", lblSize: "Diameter", lblOrbit: "Orbital Period (Revolution Period)",
+                lblTemp: "Average Temperature", lblMoons: "Natural Satellites", lblDay: "Day Length (Rotation Period)",
+                lblGravity: "Surface Gravity",
+                secMissions: "🚀 Notable Missions", secFacts: "💡 Fun Facts",
+                ttSlower: "Slow down", ttFaster: "Speed up", ttPause: "Pause / Play"
+            },
+            id: {
+                hint: "Ketuk planet untuk menjelajah",
+                controlsHint: "Seret untuk memutar &nbsp;·&nbsp; Gulir untuk memperbesar &nbsp;·&nbsp; Klik planet",
+                loading: "Memuat tekstur...",
+                lblDist: "Jarak dari Matahari", lblSize: "Diameter", lblOrbit: "Periode Orbit (Kala Revolusi)",
+                lblTemp: "Suhu Rata-rata", lblMoons: "Satelit Alami", lblDay: "Panjang Hari (Kala Rotasi)",
+                lblGravity: "Gravitasi Permukaan",
+                secMissions: "🚀 Misi Penting", secFacts: "💡 Fakta Menarik",
+                ttSlower: "Perlambat", ttFaster: "Percepat", ttPause: "Jeda / Putar"
+            }
+        };
+
+        let LANG = (localStorage.getItem('solar-lang') === 'id') ? 'id' : 'en';
+
+
+        const SPEEDS = [0.25, 0.5, 1, 2, 4];
+        let speedIdx = 2;
+        let isPaused = false;
+
+
+        let scene, camera, renderer, controls, raycaster;
+        let planets = [];
+        let focusedMesh = null;
+        const mouse = new THREE.Vector2();
+        let isFollowing = false;
+        const lastPlanetPos = new THREE.Vector3();
+        let asteroidBelt = null;
+
+
+        const loadingManager = new THREE.LoadingManager(
+
+            () => {
+                setTimeout(() => {
+                    const el = document.getElementById('loader');
+                    el.classList.add('hidden');
+                    setTimeout(() => el.style.display = 'none', 700);
+                }, 300);
+            },
+
+            (url, loaded, total) => {
+                const pct = Math.round((loaded / total) * 100);
+                document.getElementById('loader-progress').textContent = `${UI_TEXT[LANG].loading} ${pct}%`;
+            },
+        );
+
+
+        setTimeout(() => {
+            const el = document.getElementById('loader');
+            if (el && !el.classList.contains('hidden')) {
+                el.classList.add('hidden');
+                setTimeout(() => el.style.display = 'none', 700);
+            }
+        }, 12000);
+
+        const texLoader = new THREE.TextureLoader(loadingManager);
+
+
+        function makeSaturnRingTexture() {
+            const c = document.createElement('canvas');
+            c.width = 512; c.height = 1;
+            const ctx = c.getContext('2d');
+            const g = ctx.createLinearGradient(0, 0, 512, 0);
+            g.addColorStop(0, 'rgba(205,180,130,0.0)');
+            g.addColorStop(0.12, 'rgba(205,180,130,0.4)');
+            g.addColorStop(0.30, 'rgba(225,200,150,0.75)');
+            g.addColorStop(0.48, 'rgba(210,188,138,0.55)');
+            g.addColorStop(0.62, 'rgba(220,195,145,0.72)');
+            g.addColorStop(0.82, 'rgba(205,180,130,0.38)');
+            g.addColorStop(1, 'rgba(195,172,122,0.0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, 512, 1);
+            return new THREE.CanvasTexture(c);
+        }
+
+
+        function init() {
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 50, 75);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.06;
+            controls.minDistance = 5;
+            controls.maxDistance = 500;
+
+
+            scene.add(new THREE.AmbientLight(0x111122, 2.2));
+            const sunLight = new THREE.PointLight(0xfff5e0, 3.5, 900);
+            scene.add(sunLight);
+
+            raycaster = new THREE.Raycaster();
+
+            createStarfield();
+            createSolarSystem();
+            createAsteroidBelt();
+            setupEvents();
+            applyLanguage();
+            animate();
+        }
+
+
+        function createStarfield() {
+            const geo = new THREE.BufferGeometry();
+            const verts = [];
+            for (let i = 0; i < 9000; i++) {
+                verts.push(
+                    THREE.MathUtils.randFloatSpread(1800),
+                    THREE.MathUtils.randFloatSpread(1800),
+                    THREE.MathUtils.randFloatSpread(1800)
+                );
+            }
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+            scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+                color: 0xffffff, size: 0.55, sizeAttenuation: true
+            })));
+        }
+
+
+        function createSolarSystem() {
+
+            const lc = document.createElement('div');
+            lc.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:5;';
+            document.body.appendChild(lc);
+
+            PLANET_DATA.forEach(data => {
+                const group = new THREE.Group();
+
+
+                if (data.distance > 0) {
+                    const oGeo = new THREE.RingGeometry(data.distance - 0.07, data.distance + 0.07, 128);
+                    const oMat = new THREE.MeshBasicMaterial({
+                        color: 0x2a3a4a, side: THREE.DoubleSide,
+                        transparent: true, opacity: 0.45
+                    });
+                    const orbit = new THREE.Mesh(oGeo, oMat);
+                    orbit.rotation.x = Math.PI / 2;
+                    scene.add(orbit);
+                }
+
+
+                const tex = texLoader.load(data.texture);
+                tex.encoding = THREE.sRGBEncoding;
+
+
+                let mat;
+                if (data.isSun) {
+                    mat = new THREE.MeshBasicMaterial({ map: tex });
+                } else {
+                    mat = new THREE.MeshStandardMaterial({
+                        map: tex, roughness: 0.85, metalness: 0.05
+                    });
+                }
+
+                const mesh = new THREE.Mesh(new THREE.SphereGeometry(data.size, 52, 52), mat);
+                mesh.position.x = data.distance;
+                mesh.userData = { ...data, angle: Math.random() * Math.PI * 2 };
+
+
+                if (data.isSun) {
+                    const glowMat = new THREE.MeshBasicMaterial({
+                        color: 0xff9933, transparent: true, opacity: 0.10, side: THREE.BackSide
+                    });
+                    mesh.add(new THREE.Mesh(new THREE.SphereGeometry(data.size * 1.18, 32, 32), glowMat));
+                }
+
+
+                if (data.hasRings) {
+                    const rGeo = new THREE.RingGeometry(data.size * 1.45, data.size * 2.4, 128);
+
+                    const pos = rGeo.attributes.position;
+                    const uv = rGeo.attributes.uv;
+                    const v3 = new THREE.Vector3();
+                    const rMin = data.size * 1.45, rMax = data.size * 2.4;
+                    for (let i = 0; i < pos.count; i++) {
+                        v3.fromBufferAttribute(pos, i);
+                        uv.setXY(i, (v3.length() - rMin) / (rMax - rMin), 0.5);
+                    }
+                    const rMat = new THREE.MeshStandardMaterial({
+                        map: makeSaturnRingTexture(),
+                        side: THREE.DoubleSide,
+                        transparent: true, roughness: 1, metalness: 0
+                    });
+                    const ring = new THREE.Mesh(rGeo, rMat);
+                    ring.rotation.x = Math.PI / 2.5;
+                    mesh.add(ring);
+                }
+
+
+                if (data.key === "Uranus") mesh.rotation.z = Math.PI / 2;
+
+                group.add(mesh);
+                scene.add(group);
+
+
+                const label = document.createElement('div');
+                label.className = 'planet-label';
+                label.textContent = data[LANG].name;
+                lc.appendChild(label);
+
+                planets.push({ group, mesh, data, label });
+            });
+        }
+
+
+        function createAsteroidBelt() {
+            const totalCount = 800;
+            const innerR = 29, outerR = 33;
+            const dummy = new THREE.Object3D();
+            const group = new THREE.Group();
+            const sharedMat = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(0x252320),
+                emissive: new THREE.Color(0x0e0d0c),
+                roughness: 0.92,
+                metalness: 0.04
+            });
+
+
+            const geo = new THREE.SphereGeometry(0.12, 9, 7);
+
+            const mesh = new THREE.InstancedMesh(geo, sharedMat, totalCount);
+            for (let i = 0; i < totalCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = innerR + Math.random() * (outerR - innerR);
+                const y = (Math.random() - 0.5) * 1.8;
+                dummy.position.set(Math.cos(angle) * r, y, Math.sin(angle) * r);
+                dummy.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+
+                dummy.scale.set(
+                    0.2 + Math.random() * 0.9,
+                    0.15 + Math.random() * 0.45,
+                    0.2 + Math.random() * 0.7
+                );
+                dummy.updateMatrix();
+                mesh.setMatrixAt(i, dummy.matrix);
+            }
+            mesh.instanceMatrix.needsUpdate = true;
+            group.add(mesh);
+
+            scene.add(group);
+            asteroidBelt = group;
+        }
+
+
+        function setupEvents() {
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            renderer.domElement.addEventListener('pointerdown', onPointer);
+
+            document.getElementById('close-btn').addEventListener('click', closePanel);
+            document.getElementById('btn-slower').addEventListener('click', () => {
+                if (speedIdx > 0) { speedIdx--; updateSpeedUI(); }
+            });
+            document.getElementById('btn-faster').addEventListener('click', () => {
+                if (speedIdx < SPEEDS.length - 1) { speedIdx++; updateSpeedUI(); }
+            });
+            document.getElementById('btn-pause').addEventListener('click', () => {
+                isPaused = !isPaused;
+                document.getElementById('btn-pause').textContent = isPaused ? '▶' : '⏸';
+            });
+            window.addEventListener('keydown', e => {
+                if (e.key === 'Escape') closePanel();
+            });
+
+            document.getElementById('lang-en').addEventListener('click', () => setLanguage('en'));
+            document.getElementById('lang-id').addEventListener('click', () => setLanguage('id'));
+        }
+
+        function updateSpeedUI() {
+            document.getElementById('speed-label').textContent = SPEEDS[speedIdx] + '×';
+        }
+
+        function applyLanguage() {
+            const u = UI_TEXT[LANG];
+            document.documentElement.lang = LANG;
+
+
+            document.getElementById('hint-text').textContent = u.hint;
+            document.getElementById('controls-hint').innerHTML = u.controlsHint;
+            document.getElementById('lbl-dist').textContent = u.lblDist;
+            document.getElementById('lbl-size').textContent = u.lblSize;
+            document.getElementById('lbl-orbit').textContent = u.lblOrbit;
+            document.getElementById('lbl-temp').textContent = u.lblTemp;
+            document.getElementById('lbl-moons').textContent = u.lblMoons;
+            document.getElementById('lbl-day').textContent = u.lblDay;
+            document.getElementById('lbl-gravity').textContent = u.lblGravity;
+            document.getElementById('sec-missions').textContent = u.secMissions;
+            document.getElementById('sec-facts').textContent = u.secFacts;
+
+
+            document.getElementById('btn-slower').title = u.ttSlower;
+            document.getElementById('btn-faster').title = u.ttFaster;
+            document.getElementById('btn-pause').title = u.ttPause;
+
+
+            planets.forEach(p => { p.label.textContent = p.data[LANG].name; });
+
+
+            document.getElementById('lang-en').classList.toggle('active', LANG === 'en');
+            document.getElementById('lang-id').classList.toggle('active', LANG === 'id');
+
+
+            if (focusedMesh) fillPanel(focusedMesh.userData);
+        }
+
+        function setLanguage(lang) {
+            if (lang !== 'en' && lang !== 'id') return;
+            LANG = lang;
+            localStorage.setItem('solar-lang', LANG);
+            applyLanguage();
+        }
+
+
+        function onPointer(e) {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const hits = raycaster.intersectObjects(planets.map(p => p.mesh), true);
+            if (!hits.length) return;
+
+            let obj = hits[0].object;
+
+            while (obj && !obj.userData.key) obj = obj.parent;
+            if (obj?.userData.key) focusPlanet(obj);
+        }
+
+        // ---- Focus ----
+        function fillPanel(d) {
+            const tx = (LANG === 'id') ? d.id : d.en;
+
+            document.getElementById('planet-name').textContent = tx.name;
+            document.getElementById('planet-name').style.color = d.color || 'var(--accent)';
+            document.getElementById('planet-type').textContent = tx.type;
+            document.getElementById('planet-desc').textContent = tx.desc;
+            document.getElementById('stat-dist').textContent = tx.realDist;
+            document.getElementById('stat-size').textContent = tx.realSize;
+            document.getElementById('stat-orbit').textContent = tx.orbitTime;
+            document.getElementById('stat-temp').textContent = tx.temp;
+            document.getElementById('stat-moons').textContent = tx.moons || '—';
+            document.getElementById('stat-day').textContent = tx.dayLength || '—';
+            document.getElementById('stat-gravity').textContent = tx.gravity || '—';
+            document.getElementById('stat-missions').textContent = tx.missions || '—';
+            const factsList = document.getElementById('stat-facts');
+            factsList.innerHTML = '';
+            if (tx.funFacts && tx.funFacts.length) {
+                tx.funFacts.forEach(fact => {
+                    const li = document.createElement('li');
+                    li.textContent = fact;
+                    factsList.appendChild(li);
+                });
+            }
+        }
+
+        function focusPlanet(mesh) {
+            if (focusedMesh === mesh) return;
+            focusedMesh = mesh;
+            const d = mesh.userData;
+
+            fillPanel(d);
+
+            document.getElementById('info-panel').classList.add('active');
+            document.getElementById('header').style.opacity = '0.25';
+
+
+            const target = new THREE.Vector3();
+            mesh.getWorldPosition(target);
+            const off = d.size * 5.5;
+
+            new TWEEN.Tween(controls.target)
+                .to({ x: target.x, y: target.y, z: target.z }, 1300)
+                .easing(TWEEN.Easing.Cubic.Out).start();
+
+            isFollowing = false;
+            new TWEEN.Tween(camera.position)
+                .to({ x: target.x + off, y: target.y + off * 0.35, z: target.z + off }, 1300)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .onComplete(() => {
+                    if (focusedMesh) {
+                        focusedMesh.getWorldPosition(lastPlanetPos);
+                        isFollowing = true;
+                    }
+                })
+                .start();
+        }
+
+        function closePanel() {
+            focusedMesh = null;
+            isFollowing = false;
+            document.getElementById('info-panel').classList.remove('active');
+            document.getElementById('header').style.opacity = '1';
+
+            new TWEEN.Tween(camera.position)
+                .to({ x: 0, y: 50, z: 75 }, 1600)
+                .easing(TWEEN.Easing.Cubic.InOut).start();
+            new TWEEN.Tween(controls.target)
+                .to({ x: 0, y: 0, z: 0 }, 1600)
+                .easing(TWEEN.Easing.Cubic.InOut).start();
+        }
+
+
+        function updateLabels() {
+            const hide = !!focusedMesh;
+            planets.forEach(p => {
+                const wp = new THREE.Vector3();
+                p.mesh.getWorldPosition(wp);
+                const proj = wp.clone().project(camera);
+
+                if (proj.z >= 1) { p.label.style.opacity = '0'; return; }
+
+                const sx = (proj.x * 0.5 + 0.5) * window.innerWidth;
+                const sy = (-proj.y * 0.5 + 0.5) * window.innerHeight;
+                const screenR = (p.data.size / wp.distanceTo(camera.position)) * window.innerHeight * 0.65;
+
+                p.label.style.left = sx + 'px';
+                p.label.style.top = (sy - screenR - 8) + 'px';
+                p.label.style.opacity = hide ? '0' : '0.7';
+            });
+        }
+
+
+        function animate(t) {
+            requestAnimationFrame(animate);
+            TWEEN.update(t);
+            controls.update();
+
+            if (!isPaused) {
+                const spd = SPEEDS[speedIdx];
+                planets.forEach(p => {
+                    if (p.data.speed > 0) {
+                        p.mesh.userData.angle += p.data.speed * spd * 0.5;
+                        p.mesh.position.x = Math.cos(p.mesh.userData.angle) * p.data.distance;
+                        p.mesh.position.z = Math.sin(p.mesh.userData.angle) * p.data.distance;
+                    }
+                    if (p.data.isSun) {
+                        p.mesh.rotation.y += 0.0004 * spd; // Sun rotates slowly
+                    } else {
+                        p.mesh.rotation.y += 0.003 * spd * (p.data.retrograde ? -1 : 1);
+                    }
+                });
+            } else if (focusedMesh) {
+                focusedMesh.rotation.y += 0.002;
+            }
+
+
+            if (asteroidBelt) asteroidBelt.rotation.y += 0.00008 * SPEEDS[speedIdx];
+
+
+            if (focusedMesh && isFollowing) {
+                const currentPos = new THREE.Vector3();
+                focusedMesh.getWorldPosition(currentPos);
+                const delta = currentPos.clone().sub(lastPlanetPos);
+                controls.target.add(delta);
+                camera.position.add(delta);
+                lastPlanetPos.copy(currentPos);
+            }
+
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => { });
+            });
+        }
+
+
+        init();
+    </script>
+</body>
+
+</html>
