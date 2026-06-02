@@ -1189,7 +1189,9 @@
                 renderer.setSize(window.innerWidth, window.innerHeight);
             });
 
-            renderer.domElement.addEventListener('pointerdown', onPointer);
+             //kocakk amt, tadi ada bugnya woilah
+            renderer.domElement.addEventListener('pointerdown', onPointerDown); 
+            renderer.domElement.addEventListener('pointerup',   onPointerUp);  
 
             document.getElementById('close-btn').addEventListener('click', closePanel);
             document.getElementById('btn-slower').addEventListener('click', () => {
@@ -1254,9 +1256,19 @@
             applyLanguage();
         }
 
-
-        function onPointer(e) {
+// jadi gini le, ktemu bugny jir aowkwaokqaw
+        let downX = 0, downY = 0;   
+        function onPointerDown(e) {
+            downX = e.clientX;
+            downY = e.clientY;
+        }
+        function onPointerUp(e) {
             if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+            const dx = e.clientX - downX;
+            const dy = e.clientY - downY;
+            if (Math.hypot(dx, dy > 5) return;
+            //jos gandos, smpe sini aja bos
             mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
@@ -1270,7 +1282,6 @@
             if (obj?.userData.key) focusPlanet(obj);
         }
 
-        // ---- Focus ----
         function fillPanel(d) {
             const tx = (LANG === 'id') ? d.id : d.en;
 
