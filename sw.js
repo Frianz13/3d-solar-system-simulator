@@ -1,9 +1,9 @@
 /* ============================================================
-   Service Worker — 3D Solar System Simulator
+   Service Worker : 3D Solar System Simulator
    Cache-first strategy for offline support
    ============================================================ */
 
-const CACHE = 'cosmic-3d-v1';
+const CACHE = 'cosmic-3d-v2';
 
 const ASSETS = [
     './index.html',
