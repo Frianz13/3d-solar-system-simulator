@@ -1,14 +1,21 @@
 /* ============================================================
    Service Worker : 3D Solar System Simulator
    Cache-first strategy for offline support
+   v3: semua aset LOKAL (tanpa CDN) — dulu install bisa gagal
+   total kalau 1 saja request CDN gagal (cache.addAll itu
+   all-or-nothing), bikin mode offline mati diam-diam.
    ============================================================ */
 
-const CACHE = 'cosmic-3d-v2';
+const CACHE = 'cosmic-3d-v3';
 
 const ASSETS = [
+    './',
     './index.html',
     './manifest.json',
     './icon.svg',
+    './libs/three.min.js',
+    './libs/OrbitControls.js',
+    './libs/tween.umd.js',
     './Sun.jpg',
     './Mercury.jpg',
     './Venus.jpg',
@@ -17,16 +24,23 @@ const ASSETS = [
     './Jupiter.jpg',
     './Saturn.jpg',
     './Uranus.jpg',
-    './Neptune.jpg',
-    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
-    'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js'
+    './Neptune.jpg'
 ];
 
-// Install: pre-cache all assets
+// Install: pre-cache satu-satu (bukan addAll) supaya 1 file gagal
+// tidak membatalkan seluruh install; file inti tetap wajib ada.
 self.addEventListener('install', e => {
     e.waitUntil(
-        caches.open(CACHE).then(cache => cache.addAll(ASSETS))
+        caches.open(CACHE).then(async cache => {
+            const results = await Promise.allSettled(
+                ASSETS.map(url => cache.add(url))
+            );
+            results.forEach((r, i) => {
+                if (r.status === 'rejected') {
+                    console.error('[sw] gagal cache:', ASSETS[i], r.reason);
+                }
+            });
+        })
     );
     self.skipWaiting();
 });
@@ -43,7 +57,10 @@ self.addEventListener('activate', e => {
     self.clients.claim();
 });
 
-// Fetch: cache-first, fallback to network + cache
+// Fetch: cache-first, fallback ke network + cache.
+// Navigasi (buka app) yang miss di cache jatuh ke index.html —
+// tanpa ini, buka PWA offline via URL root bisa gagal padahal
+// index.html-nya ada di cache.
 self.addEventListener('fetch', e => {
     e.respondWith(
         caches.match(e.request).then(cached => {
@@ -54,7 +71,12 @@ self.addEventListener('fetch', e => {
                     caches.open(CACHE).then(c => c.put(e.request, clone));
                 }
                 return res;
-            }).catch(() => cached); // offline fallback
+            }).catch(() => {
+                if (e.request.mode === 'navigate') {
+                    return caches.match('./index.html');
+                }
+                return cached;
+            });
         })
     );
 });
